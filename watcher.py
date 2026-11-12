@@ -261,12 +261,20 @@ def send_email(subject, body):
         with smtp:
             if port != 465:
                 smtp.starttls()
-            smtp.login(user, password)
+                smtp.ehlo()
+            # One method only: smtp.login() falls back to AUTH LOGIN after a rejected AUTH PLAIN, and Gmail
+            # hangs up on that, so the real "535 bad credentials" turned into SMTPServerDisconnected.
+            smtp.user, smtp.password = user, password
+            smtp.auth("PLAIN", smtp.auth_plain)
             smtp.send_message(msg)
         return True
+    except smtplib.SMTPResponseException as e:
+        # The server's reply (e.g. 535 bad credentials) contains no secrets.
+        reply = e.smtp_error.decode("utf-8", "replace") if isinstance(e.smtp_error, bytes) else str(e.smtp_error)
+        log(f"email failed: {type(e).__name__} {e.smtp_code} {' '.join(reply.split())[:200]}")
+        return False
     except (smtplib.SMTPException, OSError) as e:
-        log("email failed:", type(e).__name__)
-        detail(e)
+        log("email failed:", type(e).__name__, str(e)[:200])
         return False
 
 
