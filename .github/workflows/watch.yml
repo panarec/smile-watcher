@@ -39,7 +39,8 @@ jobs:
         continue-on-error: true
         run: python3 watcher.py ${{ inputs.test_email && '--test-email' || '' }}
         env:
-          WATCH_CONFIG: ${{ vars.WATCH_CONFIG }}
+          # A secret, not a variable: the log prints each step's env and masks only secrets.
+          WATCH_CONFIG: ${{ secrets.WATCH_CONFIG }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}

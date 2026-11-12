@@ -15,10 +15,16 @@ The watcher only reads. Booking is up to you.
 
 ## What to watch: `WATCH_CONFIG`
 
-The repo is public, so what you watch isn't in it. It lives in a repository **variable**, which only you can see:
-Settings → Secrets and variables → Actions → Variables → `WATCH_CONFIG`, or
-`gh variable set WATCH_CONFIG -R panarec/smile-watcher < config.json`. For the same reason the Actions logs only show
-counts ("watch: 150 free slots, 0 new earlier"). Clinic, doctor and dates appear only in the email.
+The repo is public, so what you watch isn't in it. It lives in the repository **secret** `WATCH_CONFIG`. It's a
+secret, not a variable, because Actions logs print each step's env and mask only secrets. Keep it on one line, since
+GitHub masks single-line values reliably:
+
+```sh
+gh secret set WATCH_CONFIG -R panarec/smile-watcher -b "$(python3 -c 'import json;print(json.dumps(json.load(open("config.json")),ensure_ascii=False))')"
+```
+
+Secrets can't be read back, so keep your copy in the git-ignored `config.json`. For the same reason the Actions logs
+only show counts ("watch: 150 free slots, 0 new earlier"). Clinic, doctor and dates appear only in the email.
 
 ```json
 {
