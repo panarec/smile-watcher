@@ -1,0 +1,8 @@
+{
+  "site": "smilecentrum",
+  "watches": [
+    {"clinic": "Holešovice", "service": "Nový pacient"},
+    {"clinic": "Vinohrady", "service": "Dentální hygiena", "staff": ["Kramárová"], "before": "2026-12-15",
+     "from": "07:00", "to": "12:00", "weekdays": ["mon", "tue", "wed", "thu", "fri"]}
+  ]
+}

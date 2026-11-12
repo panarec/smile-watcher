@@ -1,0 +1,64 @@
+name: Watch appointments
+
+on:
+  schedule:
+    # Every 5 min (GitHub's minimum; runs often start late or get skipped - cron-job.org is the main trigger).
+    - cron: "*/5 * * * *"
+    # Monthly keep-alive: GitHub pauses schedules in public repos after 60 days without activity.
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+    inputs:
+      test_email:
+        description: "Only send a test email / push"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.event.schedule != '0 4 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: watch
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      # Slots seen on the previous run.
+      - uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: state-${{ github.run_id }}
+          restore-keys: state-
+      - id: watch
+        # A failed check doesn't fail the run, so GitHub sends no "run failed" email every 5 minutes.
+        # The watcher emails you itself when checks keep failing for 2 hours.
+        # Public repo: the watcher logs only counts here; details go only into the email.
+        continue-on-error: true
+        run: python3 watcher.py ${{ inputs.test_email && '--test-email' || '' }}
+        env:
+          WATCH_CONFIG: ${{ vars.WATCH_CONFIG }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      - uses: actions/cache/save@v4
+        if: always() && steps.watch.outputs.state_changed == 'true'
+        with:
+          path: state.json
+          key: state-${{ github.run_id }}-${{ github.run_attempt }}
+
+  keepalive:
+    if: github.event.schedule == '0 4 1 * *'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/watch.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
